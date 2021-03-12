@@ -1,276 +1,141 @@
-class Game {
-	constructor() {
-		this.canPlay = false
-		this.started = false
-		this.sequenceGame = []
-		this.sequencePlayer = []
-		this.droppedButtons = []
-		this.difficulty = 0
-		this.currentLevel = 1
-		this.timers = []
-		this.buttons = document.querySelectorAll(".button")
-		this.audios = {
-			gameOver: new Audio("./assets/wrong.mp3")
-		}
-}
+import {
+	getRandomWord, 
+	getSequenceLetters
+} from './words.js'
+
+const html = {
+  buttons: document.querySelectorAll(".button"),
+  wordPanel: document.querySelector(".word")
+};
+
+const state = {
+	gameStarted: false,
+	letterIndex: 0,
+	word: ""
+};
+
+const runAnimation = {
+  error: (element) => {
+    element.classList.add("error");
+
+    element.addEventListener("animationend", () => {
+      element.classList.remove("error");
+    });
+	},
+	up: () => {
+		html.buttons.forEach(button => {
+			button.classList.add('up')
+			
+			button.addEventListener('animationend', () => {
+				button.classList.remove('up');
+			})
+		})
+	}
+};
+
+const resetFunctions = {
+	resetButtonsClasses() {
+		html.buttons.forEach((button) => {
+			const containsClass = button.classList.contains("correct");
 	
-	start() {
-		this.canPlay = true
-		this.started = true
-		
-		this.output(`Level ${this.currentLevel}`)
-		this.timers.push( setTimeout(() => this.createSequence(), 750) )
+			if (containsClass) button.classList.remove("correct");
+		});
+	},
 
-		console.log("> GAME STARTED")
+	resetWordClasses() {
+		const letters = html.wordPanel.querySelectorAll("span");
+
+		letters.forEach((letter) => {
+			const containsClass = letter.classList.contains("correct");
+
+			if (containsClass) letter.classList.remove("correct");
+		});
 	}
-
-	finish() {
-		
-		this.canPlay = false
-		this.started = false
-		this.currentLevel = 1
-		this.difficulty = 0
-
-		this.animations.gameOver()	
-		this.sounds.gameOver()
-		
-		this.resetValues()
-
-		this.output("Game Over")
-
-		setTimeout(() => this.output("PRESS ENTER TO PLAY"), 1000)
-
-		console.log("> GAME OVER")
-	}
-
-	createSequence() {
-		
-		function createUniqueSequence(limit) {
-			let randomSequence = []
-			
-			createRandomNumber(randomSequence)
-
-			function createRandomNumber(array) {
-				if (array.length === limit) return randomSequence
-
-				const randomNumber = Math.floor(Math.random() * 16)
-				
-				if (array.includes(randomNumber)) createRandomNumber(array)
-				else { 
-					randomSequence.push(randomNumber) 
-					createRandomNumber(array)
-				}
-			}
-
-			return randomSequence
-		}
-
-		function getDifficulty(thisDifficulty) {
-			let difficulty = thisDifficulty
-
-			if (difficulty >= 3) { 
-				difficulty = 7
-
-				return difficulty
-			}
-				
-			if (difficulty === 0) difficulty = 2
-			else difficulty = 2 + thisDifficulty
-
-			return difficulty
-		}
-		
-		const difficulty = getDifficulty(this.difficulty)
-
-		const randomSequence = createUniqueSequence(difficulty)
-			
-		for (const number of randomSequence) {
-			this.sequenceGame.push(number)
-		}
-
-		this.animations.button.sequenceIndicator(randomSequence)
-	}
-
-	checkSequence() {
-		const currentPlay = this.sequencePlayer.length - 1
-		const indexPlayed = this.sequencePlayer[currentPlay]
-
-		this.canPlay = false
-
-		if (this.sequenceGame.includes(indexPlayed)) {
-			console.log("Correct!")
-
-			this.dropButton(indexPlayed)
-			this.canPlay = true
-
-			if (this.sequencePlayer.length === this.sequenceGame.length) {
-				this.newLevel()
-			}
-
-		} else this.finish()
-	}
-
-	includeSequence(indexToInclude) {
-		this.sequencePlayer.push(indexToInclude)
-
-		this.checkSequence()
-	}
-
-	dropButton(buttonIndex) {
-		this.droppedButtons.push(buttonIndex)
-		this.animations.button.drop(this.buttons[buttonIndex])
-	}
-
-	newLevel() {
-		this.currentLevel += 1
-		this.difficulty += 1
-
-		this.timers.push( setTimeout(() => this.getDroppedButtons(this.droppedButtons), 500) )
-
-		this.timers.push( setTimeout(() => { 
-			this.output(`Level ${this.currentLevel}`)
-			this.resetValues()
-			
-			this.createSequence()
-		}, 2000) )
-	}
-
-	getDroppedButtons(droppedButtons) {
-		this.animations.button.getDropped(droppedButtons)
-
-		this.droppedButtons = []
-	}
-
-	resetValues() {
-		this.timers.forEach(timeID => clearTimeout(timeID))
-
-		this.timers = []
-
-		this.sequenceGame = []
-		this.sequencePlayer = []
-		this.droppedButtons = []
-	}
-	
-	output(message) {
-		const outputDOM = document.querySelector("#game h1")
-
-		outputDOM.textContent = message
-	}
-
-	handles = {
-		click: event => {
-			if(this.canPlay) {
-				const indexOfClickedButton = Number(event.target.dataset.index)
-
-				if(!this.sequencePlayer.includes(indexOfClickedButton)) {
-					this.sequencePlayer.push(indexOfClickedButton)
-					this.checkSequence()
-
-					console.log(indexOfClickedButton)
-				}
-			}
-		},
-
-		keypress: event => {
-			if (!this.started && event.key === "Enter") {
-				this.start()
-			}
-		}
-	}
-
-	animations = {
-		button: {
-			sequenceIndicator: (sequence) => {
-				const keyframes = [
-					{opacity: 1},
-					{opacity: 0},
-					{opacity: 1},
-				]
-
-				const options = {
-					duration: 750
-				}
-
-				for (const index of sequence) {
-					this.buttons[index].animate(keyframes, options)
-				}
-			},
-
-			drop: (element) => {
-				const keyframes = [
-					{
-						visibility: 'visible',
-						opacity: 1
-					},
-					{
-						visibility: 'hidden',
-						opacity: 0
-					}
-				]
-
-				const options = {
-					duration: 750,
-					easing: "ease-in-out",
-					fill: "forwards"
-				}
-
-				element.animate(keyframes, options)
-			},
-
-			getDropped: (buttons) => {
-				const keyframes = [
-					{
-						visibility: 'hidden',
-						opacity: 0
-					},
-					{
-						visibility: 'visible',
-						opacity: 1
-					}
-				]
-
-				const options = {
-					duration: 300,
-					fill: "forwards",
-					easing: "ease-out",
-					iterations: 2
-				}
-
-				for (const buttonIndex of buttons) {
-					this.buttons[buttonIndex].animate(keyframes, options)
-				}
-			}
-		},
-
-		gameOver: () => {
-				const keyframes = [
-					{
-						visibility: 'hidden',
-						opacity: 0
-					},
-					{
-						visibility: 'visible',
-						opacity: 1
-					}
-				]
-
-				const options = {
-					duration: 100,
-					fill: "forwards",
-					easing: "ease-out",
-					iterations: 3
-				}
-
-				for (const button of this.buttons) {
-					button.animate(keyframes, options)
-				}
-		}
-	}
-
-	sounds = {
-		gameOver: () => this.audios.gameOver.play()
-	}
-
 }
 
-export default Game;
+function populateButtonsWithLetters(sequence) {
+  html.buttons.forEach((button, index) => {
+    button.textContent = sequence[index];
+  });
+}
+
+function createPanel(wordSpread) {
+	runAnimation.up();
+	
+  html.wordPanel.innerHTML = "";
+
+  wordSpread.forEach(letter => {
+    const letterElement = document.createElement("span");
+
+    letterElement.textContent = letter;
+
+    html.wordPanel.appendChild(letterElement);
+  });
+}
+
+function wordHasLetter(letter) {
+	const word = [...state.word];
+
+	return word[state.letterIndex] === letter;
+}
+
+function handleClick({ target: clickedButton }) {
+	if(state.gameStarted) wordHasLetter(clickedButton.textContent) 
+		? handleHit(clickedButton)
+		: handleError(clickedButton)
+}
+
+function handleHit(clickedButton) {
+	if(state.letterIndex + 1 === state.word.length) {
+		nextLevel()
+
+		return
+	}
+
+	const letterInPanel = html.wordPanel.children[state.letterIndex];
+	
+	letterInPanel.classList.add("correct");
+	clickedButton.classList.add("correct");
+
+	state.letterIndex += 1;
+}
+
+function handleError(element) {
+	runAnimation.error(element);
+	
+	state.letterIndex = 0;
+	
+	resetFunctions.resetButtonsClasses();
+	resetFunctions.resetWordClasses();
+}
+
+function nextLevel() {
+	state.letterIndex = 0;
+	
+	resetFunctions.resetButtonsClasses();
+	resetFunctions.resetWordClasses();
+
+	start();
+}
+
+function start() {	
+	const word = getRandomWord();
+	const sequence = [...word.toUpperCase(), ...getSequenceLetters(word)]
+		.sort( (foo, bar) => 0.5 - Math.random());
+
+	state.word = word.toUpperCase();
+
+	populateButtonsWithLetters(sequence);
+	createPanel([...word]);
+}
+
+export default function handleStart() {
+	if(!state.gameStarted) {
+		html.buttons
+			.forEach(button => button.addEventListener("click", handleClick));
+		
+		start();
+
+		state.gameStarted = true;
+	}
+}
